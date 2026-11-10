@@ -1,0 +1,13 @@
+{
+  "interfaces": {
+    "ethernet-1/1": {
+      "config": {"description": "uplink-to-spine1", "enabled": true, "mtu": 9214}
+    },
+    "ethernet-1/3": {
+      "config": {"description": "new-member", "enabled": true, "mtu": 9214}
+    }
+  },
+  "system": {
+    "config": {"hostname": "leaf-02"}
+  }
+}
