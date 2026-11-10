@@ -23,6 +23,12 @@ tags each path with a blast-radius tier:
 Changed paths are sorted high impact first. Removals are reported too: intended
 state is authoritative, so anything absent from it is a candidate revert.
 
+Before a patch is considered shippable the guard pass checks two things: the leaf
+count against `--max-changes` (default 25) and any hit on protected prefixes
+(`/system/aaa`, `/system/radius`, `/system/config/hostname`, plus `--protected`).
+A blocked run exits `3` and lists every violation, so the reviewer decides
+whether to split the window or accept the risk explicitly.
+
 ## Install
 
 Python 3.9+, standard library only.
@@ -39,7 +45,7 @@ entry point with `pip install .` into a throwaway virtualenv.
 ## Usage
 
 ```sh
-python -m gnmi_diff.cli --running examples/running.json --intended examples/intended.json
+python -m gnmi_diff.cli --running examples/running.json --intended examples/intended.json --force-protected
 ```
 
 ```
@@ -59,14 +65,25 @@ drift detected: 6 change(s) (4 high, 2 low)
 and `0` when the device matches, which is the CI mode: pin the snapshot you
 last reviewed as `--intended`.
 
-Exit codes: `0` reviewed/clean, `1` drift under `--check`, `2` unreadable or
-malformed snapshot.
+Without `--force-protected` the same example is blocked, because the hostname
+change is protected:
+
+```
+guard: /system/config/hostname is under protected /system/config/hostname
+blocked by 1 guard(s); split the window or pass --force-protected
+```
+
+To guard a site-specific path, repeat `--protected PREFIX`; custom prefixes
+replace the defaults, so pass the defaults too when you want both. Exit codes:
+`0` reviewed/clean, `1` drift under `--check`, `2` unreadable or malformed
+snapshot, `3` guard violation (`--check` is not reached).
 
 ## Change window and rollback
 
 1. Snapshot running state to `pre.json`, render intended state to `desired.json`.
 2. Run the differ; post the high tier first for a second pair of eyes.
 3. Push only the reviewed paths, then re-collect and diff again until clean.
+   Clear the guards first, never after the fact.
 4. Rollback: keep `pre.json` in the ticket; run `--intended pre.json` against a
    fresh snapshot to get the revert set.
 
@@ -79,9 +96,10 @@ unexplained removals.
 ```
 gnmi_diff/model.py   snapshot loading, flattening, severity tiers
 gnmi_diff/diff.py    pure add/remove/modify diff and text report
+gnmi_diff/guards.py  change-count cap and protected prefix checks
 gnmi_diff/cli.py     argument parsing, exit codes, JSON output
 examples/            running and intended snapshots for a two-leaf lab
-tests/               diff, severity, sequencing and CLI exit-code tests
+tests/               diff, guard, severity, sequencing and CLI exit-code tests
 ```
 
 Paths are slash-joined snapshot keys; sequences are indexed
