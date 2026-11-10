@@ -72,7 +72,10 @@ class CliTest(unittest.TestCase):
             )
 
     def test_check_exits_nonzero_on_drift(self):
-        self.assertEqual(self._run(RUNNING, INTENDED, "--check"), 1)
+        self.assertEqual(self._run(RUNNING, INTENDED, "--check", "--force-protected"), 1)
+
+    def test_guard_outranks_check_on_protected_drift(self):
+        self.assertEqual(self._run(RUNNING, INTENDED, "--check"), 3)
 
     def test_check_exits_zero_without_drift(self):
         self.assertEqual(self._run(RUNNING, RUNNING, "--check"), 0)
